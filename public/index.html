@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -408,7 +408,7 @@
 
     function renderLogs(logs) {
       const container = document.getElementById('logList');
-      container.innerHTML = logs.map((log, i) => `
+      container.innerHTML = logs.slice(0,3).map((log, i) => `
         <div class="log-item">
           <div class="log-icon ${log.type}">${log.type === 'warn' ? '⚠️' : log.type === 'error' ? '🔻' : '🐟'}</div>
           <div><div class="log-text">${log.text}</div><div class="log-time">${log.time}</div></div>

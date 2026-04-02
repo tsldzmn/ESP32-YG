@@ -41,14 +41,14 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 
 // ==================== 用户配置 ====================
 const char* WIFI_SSID     = "FFF";
 const char* WIFI_PASSWORD = "cs123456";
 
 // 服务器地址（先填电脑局域网IP，部署云端后改成render域名）
-const char* SERVER_URL = "http://192.168.1.100:3000";
+const char* SERVER_URL = "https://esp32-yg.onrender.com";
 // const char* SERVER_URL = "https://你的服务名.onrender.com"; // 部署到云端
 
 // ==================== 引脚定义 ====================
@@ -174,9 +174,9 @@ float readUltrasonicCM() {
 int calcWaterLevel() {
   float dist = readUltrasonicCM();
   if (dist < 0) return waterLevel;
-  // 鱼缸高30cm，传感器装顶部
-  // 水面距传感器 2cm(满) ~ 28cm(空)
-  int level = (int)((1.0 - (dist - 2.0) / 26.0) * 100);
+  // 传感器装在鱼缸顶部，距离水面越远水位越低
+  // dist < 3cm = 满水(100%)，dist = 10cm = 半水(50%)，dist > 10cm = 低水(<50%)
+  int level = (int)((1.0 - dist / 12.0) * 100);
   return constrain(level, 0, 100);
 }
 
@@ -195,7 +195,7 @@ void readSensors() {
   turbidity = constrain(turbidity, 0, 100);
 
   // 光照
-  int lightRaw = analogRead(PIN_LIGHT_ADC);
+  int lightRaw = analogRead(PIN_LIGHT_DO);
   lightLux = map(lightRaw, 0, 4095, 0, 100);
   lightLux = constrain(lightLux, 0, 100);
 
@@ -433,6 +433,11 @@ void loop() {
 
   delay(50);
 }
+
+
+
+
+
 
 
 

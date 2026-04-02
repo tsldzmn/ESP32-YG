@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AquaSmart 智能鱼缸系统</title>
+  <title>ESP32智能鱼缸 智能鱼缸系统</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,7 +91,9 @@
     .info-flow { display: flex; flex-direction: column; gap: 16px; }
 
     /* 系统日志 */
-    .log-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .log-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); max-height: 500px; overflow-y: auto; }
+    .log-card::-webkit-scrollbar { width: 4px; }
+    .log-card::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
     .log-new { font-size: 11px; color: #e74c3c; font-weight: 600; background: #fce4ec; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
     .log-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
     .log-item:last-child { border-bottom: none; }
@@ -163,7 +165,7 @@
 </head>
 <body>
   <div class="header">
-    <div class="header-logo">AquaSmart 智能鱼缸系统</div>
+    <div class="header-logo">ESP32智能鱼缸 智能鱼缸系统</div>
     <div class="header-right">
       <div class="header-time"><div>14:29:39</div><div class="date">周三, 4月1日</div></div>
       <div class="header-icons">
@@ -192,7 +194,7 @@
           <img class="tank-img" src="https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=400&h=250&fit=crop" alt="鱼缸">
           <div class="tank-info">
             <div class="tank-name">智能鱼缸</div>
-            <div class="tank-desc">海水 · 120加仑</div>
+            <div class="tank-desc">智能水质监控系统</div>
             <div class="tank-stats">
               <div class="tank-stat" id="statTemp"><span class="icon">🌡️</span> 温度 25.5°C</div>
               <div class="tank-stat" id="statLevel"><span class="icon">〰️</span> 水位 98%</div>

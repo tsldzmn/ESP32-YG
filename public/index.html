@@ -1,0 +1,515 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32智能鱼缸 智能鱼缸系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #e8e8ec; color: #333; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    .header { background: #fff; padding: 12px 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0e0; position: sticky; top: 0; z-index: 100; }
+    .header-logo { font-size: 18px; font-weight: 700; color: #4a90d9; letter-spacing: 0.5px; }
+    .header-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #888; }
+    .header-time { font-size: 13px; color: #888; text-align: right; }
+    .header-time .date { font-size: 11px; color: #bbb; }
+    .header-icons { display: flex; gap: 12px; align-items: center; }
+    .header-icons svg { width: 20px; height: 20px; cursor: pointer; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4a90d9, #357abd); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .notif-badge { position: relative; }
+    .notif-badge::after { content: '3'; position: absolute; top: -6px; right: -8px; background: #e74c3c; color: #fff; font-size: 9px; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    .page { max-width: 1400px; margin: 0 auto; padding: 24px 32px 40px; }
+    .section-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 14px; }
+    .welcome { font-size: 22px; font-weight: 600; color: #222; margin-bottom: 6px; }
+    .welcome-sub { font-size: 13px; color: #999; margin-bottom: 24px; }
+
+    /* ===== 环境概览 3卡片 ===== */
+    .env-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    .env-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; }
+    .env-badge { position: absolute; top: 14px; right: 14px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .env-badge.up { color: #4caf50; background: #e8f5e9; }
+    .env-badge.normal { color: #4caf50; background: #e8f5e9; }
+    .env-badge.neg { color: #ff9800; background: #fff3e0; }
+    .env-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+    .env-icon.temp { background: #fce4ec; }
+    .env-icon.level { background: #f3e5f5; }
+    .env-icon.turbidity { background: #e3f2fd; }
+    .env-label { font-size: 12px; color: #999; margin-bottom: 4px; }
+    .env-value { font-size: 28px; font-weight: 700; color: #222; }
+    .env-unit { font-size: 13px; color: #999; font-weight: 400; }
+
+    /* ===== 上半区：鱼缸 + 快捷控制 ===== */
+    .upper-section { display: grid; grid-template-columns: 1fr 300px; gap: 16px; margin-bottom: 24px; }
+
+    /* 鱼缸大卡 */
+    .tank-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); height: 100%; }
+    .tank-card-inner { display: flex; height: 100%; }
+    .tank-img { width: 320px; min-height: 200px; object-fit: cover; background: #1a1a2e; }
+    .tank-info { padding: 24px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .tank-name { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 4px; }
+    .tank-desc { font-size: 12px; color: #999; margin-bottom: 16px; }
+    .tank-stats { display: flex; gap: 20px; flex-wrap: wrap; }
+    .tank-stat { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #666; background: #f8f8f8; padding: 6px 12px; border-radius: 8px; }
+    .tank-stat .icon { font-size: 14px; }
+
+    /* 快捷控制 - 右侧竖排 */
+    .quick-side { display: flex; flex-direction: column; gap: 12px; }
+    .quick-side .section-title { margin-bottom: 10px; }
+    .quick-side-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); flex: 1; }
+    .quick-side-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .quick-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .quick-icon.led { background: #fff8e1; }
+    .quick-icon.feeder { background: #fff3e0; }
+    .quick-name { font-size: 13px; font-weight: 600; color: #333; }
+    .quick-status { font-size: 11px; color: #999; margin-top: 2px; }
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ddd; border-radius: 24px; transition: 0.3s; }
+    .toggle-track:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .toggle input:checked + .toggle-track { background: #4a90d9; }
+    .toggle input:checked + .toggle-track:before { transform: translateX(20px); }
+
+    /* ===== 下半区：趋势图 + 右侧信息流 ===== */
+    .lower-section { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+    .card-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 16px; }
+
+    /* 趋势图 */
+    .trends-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .legend { display: flex; gap: 16px; float: right; margin-top: -28px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #888; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .chart-wrap { position: relative; height: 240px; }
+
+    /* 水质参数条 */
+    .params-bar { background: #fff; border-radius: 12px; padding: 18px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-top: 16px; display: flex; justify-content: space-around; }
+    .param-item { text-align: center; }
+    .param-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-bottom: 6px; }
+    .param-name { font-size: 11px; color: #999; }
+    .param-val { font-size: 16px; font-weight: 700; color: #333; margin-top: 2px; }
+
+    /* 右侧信息流 */
+    .info-flow { display: flex; flex-direction: column; gap: 16px; }
+
+    /* 系统日志 */
+        .log-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); max-height: 500px; overflow-y: auto; }
+    .log-card::-webkit-scrollbar { width: 4px; }
+    .log-card::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+    .log-new { font-size: 11px; color: #e74c3c; font-weight: 600; background: #fce4ec; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+    .log-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+    .log-item:last-child { border-bottom: none; }
+    .log-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .log-icon.warn { background: #fff3e0; }
+    .log-icon.info { background: #e3f2fd; }
+    .log-icon.error { background: #fce4ec; }
+    .log-text { font-size: 12px; color: #444; font-weight: 500; }
+    .log-time { font-size: 10px; color: #bbb; margin-top: 2px; }
+
+    /* 待办维护 */
+    .maint-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .maint-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .maint-add { background: #4a90d9; color: #fff; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
+    .maint-add:hover { background: #357abd; }
+    .maint-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+    .maint-item:last-child { border-bottom: none; }
+    .maint-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+    .maint-icon.water { background: #e3f2fd; }
+    .maint-icon.clean { background: #fff3e0; }
+    .maint-task { font-size: 12px; font-weight: 500; color: #333; }
+    .maint-due { font-size: 10px; color: #999; margin-top: 1px; }
+    .maint-edit { font-size: 11px; color: #4a90d9; cursor: pointer; margin-left: auto; flex-shrink: 0; }
+    .maint-del { font-size: 11px; color: #ccc; cursor: pointer; margin-left: 6px; flex-shrink: 0; }
+
+    /* 弹窗 */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; justify-content: center; align-items: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 16px; padding: 24px; width: 400px; max-width: 90vw; }
+    .modal h3 { font-size: 16px; margin-bottom: 16px; }
+    .modal input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 12px; outline: none; }
+    .modal input:focus { border-color: #4a90d9; }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-btns button { padding: 8px 20px; border-radius: 8px; border: none; font-size: 13px; cursor: pointer; }
+    .btn-cancel { background: #f0f0f0; color: #666; }
+    .btn-save { background: #4a90d9; color: #fff; }
+
+    @media (max-width: 1100px) { .upper-section, .lower-section { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) {
+      .header { padding: 10px 16px; }
+      .header-logo { font-size: 16px; }
+      .page { padding: 16px 14px 60px; }
+      .welcome { font-size: 18px; }
+      .env-cards { grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px; }
+      .env-card { padding: 14px 16px; }
+      .env-value { font-size: 24px; }
+      .upper-section { gap: 12px; margin-bottom: 16px; }
+      .tank-card-inner { flex-direction: column; }
+      .tank-img { width: 100%; min-height: 140px; max-height: 180px; }
+      .tank-info { padding: 16px; }
+      .tank-name { font-size: 17px; }
+      .tank-stats { gap: 10px; }
+      .tank-stat { font-size: 12px; padding: 5px 10px; }
+      .quick-side { flex-direction: row; }
+      .quick-side .section-title { display: none; }
+      .quick-side-card { padding: 14px; }
+      .lower-section { gap: 12px; }
+      .trends-card { padding: 16px; }
+      .chart-wrap { height: 200px; }
+      .params-bar { padding: 14px 16px; flex-wrap: wrap; gap: 12px; }
+      .param-item { flex: 1; min-width: 80px; }
+      .log-card { padding: 16px; }
+      .log-item { padding: 8px 0; }
+      .maint-card { padding: 16px; }
+      .maint-item { padding: 8px 0; }
+      .modal { width: 90vw; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-logo">ESP32智能鱼缸 智能鱼缸系统</div>
+    <div class="header-right">
+      <div class="header-time"><div>14:29:39</div><div class="date">周三, 4月1日</div></div>
+      <div class="header-icons">
+        <div class="notif-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <div class="avatar">A</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="welcome">欢迎回来，养鱼达人！👋</div>
+    <div class="welcome-sub">最后同步：4月1日 14:29:39 · 所有系统运行正常</div>
+
+    <!-- 环境概览 -->
+    <div class="section-title">环境概览</div>
+    <div class="env-cards">
+      <div class="env-card" id="envTemp"><div class="env-badge up">+0.2°</div><div class="env-icon temp">🌡️</div><div class="env-label">水温</div><div class="env-value">25.5 <span class="env-unit">°C</span></div></div>
+      <div class="env-card" id="envLevel"><div class="env-badge normal">正常</div><div class="env-icon level">〰️</div><div class="env-label">水位</div><div class="env-value">98 <span class="env-unit">%</span></div></div>
+      <div class="env-card" id="envTurbidity"><div class="env-badge neg">+2 NTU</div><div class="env-icon turbidity">🌊</div><div class="env-label">浑浊度</div><div class="env-value">15 <span class="env-unit">NTU</span></div></div>
+    </div>
+
+    <!-- 上半区：鱼缸 + 快捷控制 -->
+    <div class="upper-section">
+      <div class="tank-card">
+        <div class="tank-card-inner">
+          <img class="tank-img" src="https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=400&h=250&fit=crop" alt="鱼缸">
+          <div class="tank-info">
+            <div class="tank-name">智能鱼缸</div>
+            <div class="tank-desc">智能水质监控系统</div>
+            <div class="tank-stats">
+              <div class="tank-stat" id="statTemp"><span class="icon">🌡️</span> 温度 25.5°C</div>
+              <div class="tank-stat" id="statLevel"><span class="icon">〰️</span> 水位 98%</div>
+              <div class="tank-stat" id="statTurbidity"><span class="icon">🌊</span> 浑浊度 15 NTU</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="quick-side">
+        <div class="section-title">快捷控制</div>
+        <div class="quick-side-card">
+          <div class="quick-side-top"><div class="quick-icon led">💡</div><label class="toggle"><input type="checkbox" id="lightSwitch" onchange="toggleLight(this.checked)"><span class="toggle-track"></span></label></div>
+          <div class="quick-name">LED灯光</div>
+          <div class="quick-status" id="lightStatus">运行正常</div>
+        </div>
+        <div class="quick-side-card">
+          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div><label class="toggle"><input type="checkbox" id="feederSwitch" onchange="feedNow()"><span class="toggle-track"></span></label></div>
+          <div class="quick-name">自动喂食器</div>
+          <div class="quick-status" id="feederStatus">运行正常</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 下半区：趋势图 + 右侧信息流 -->
+    <div class="lower-section">
+      <!-- 左：趋势图 + 水质参数条 -->
+      <div>
+        <div class="trends-card">
+          <div class="card-title">环境趋势（过去24小时）</div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#4a90d9"></div> 温度 (°C)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#8e7cc3"></div> 水位 (%)</div>
+          </div>
+          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="params-bar">
+          <div class="param-item"><div class="param-dot" style="background:#e57373"></div><div class="param-name">温度</div><div class="param-val" id="paramTemp">25.5 °C</div></div>
+          <div class="param-item"><div class="param-dot" style="background:#42a5f5"></div><div class="param-name">浑浊度</div><div class="param-val" id="paramTurbidity">15 NTU</div></div>
+          <div class="param-item"><div class="param-dot" style="background:#ba68c8"></div><div class="param-name">水位</div><div class="param-val" id="paramLevel">98%</div></div>
+        </div>
+      </div>
+
+      <!-- 右：系统日志 + 待办维护 -->
+      <div class="info-flow">
+        <div class="log-card">
+          <div style="display:flex;align-items:center;"><div class="card-title" style="margin-bottom:0">系统日志</div><div class="log-new" id="logNew"></div></div>
+          <div id="logList"></div>
+        </div>
+        <div class="maint-card">
+          <div class="maint-header">
+            <div class="card-title" style="margin-bottom:0">待办维护</div>
+            <button class="maint-add" onclick="openModal()">＋ 添加</button>
+          </div>
+          <div id="maintList">
+            <div class="maint-item"><div class="maint-icon water">💧</div><div><div class="maint-task">换水20%</div><div class="maint-due">2天后到期</div></div><span class="maint-edit" onclick="editItem(this)">编辑</span><span class="maint-del" onclick="delItem(this)">✕</span></div>
+            <div class="maint-item"><div class="maint-icon clean">🧹</div><div><div class="maint-task">清理蛋白质分离器</div><div class="maint-due">明天到期</div></div><span class="maint-edit" onclick="editItem(this)">编辑</span><span class="maint-del" onclick="delItem(this)">✕</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 弹窗 -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h3 id="modalTitle">添加维护事项</h3>
+      <input type="text" id="taskInput" placeholder="事项名称，例如：换水20%">
+      <input type="text" id="dueInput" placeholder="到期时间，例如：2天后到期">
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-save" onclick="saveItem()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let trendChart = null;
+
+    // ========== 传感器数据 ==========
+    async function fetchSensor() {
+      try {
+        const res = await fetch('/api/sensor');
+        const json = await res.json();
+        if (json.success) {
+          const d = json.data;
+          // 环境概览
+          const tempCard = document.getElementById('envTemp');
+          tempCard.querySelector('.env-value').innerHTML = `${d.waterTemp.toFixed(1)} <span class="env-unit">°C</span>`;
+          tempCard.querySelector('.env-badge').textContent = d.waterTemp > 26 ? `+${(d.waterTemp - 25.5).toFixed(1)}°` : '正常';
+          tempCard.querySelector('.env-badge').className = 'env-badge ' + (d.waterTemp > 26 ? 'neg' : 'up');
+
+          document.getElementById('envLevel').querySelector('.env-value').innerHTML = `${d.waterLevel.toFixed(0)} <span class="env-unit">%</span>`;
+          document.getElementById('envTurbidity').querySelector('.env-value').innerHTML = `${d.turbidity.toFixed(0)} <span class="env-unit">NTU</span>`;
+
+          // 鱼缸卡片
+          document.getElementById('statTemp').innerHTML = `<span class="icon">🌡️</span> 温度 ${d.waterTemp.toFixed(1)}°C`;
+          document.getElementById('statLevel').innerHTML = `<span class="icon">〰️</span> 水位 ${d.waterLevel.toFixed(0)}%`;
+          document.getElementById('statTurbidity').innerHTML = `<span class="icon">🌊</span> 浑浊度 ${d.turbidity.toFixed(0)} NTU`;
+
+          // 水质参数条
+          document.getElementById('paramTemp').textContent = `${d.waterTemp.toFixed(1)} °C`;
+          document.getElementById('paramTurbidity').textContent = `${d.turbidity.toFixed(0)} NTU`;
+          document.getElementById('paramLevel').textContent = `${d.waterLevel.toFixed(0)}%`;
+
+          // 同步时间
+          const now = new Date(d.lastUpdate);
+          const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+          const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
+          document.querySelector('.header-time div:first-child').textContent = timeStr;
+          document.querySelector('.header-time .date').textContent = dateStr;
+          document.querySelector('.welcome-sub').textContent = `最后同步：${dateStr} ${timeStr} · ${d.waterLevel < 30 ? '⚠️ 水位过低！' : '所有系统运行正常'}`;
+        }
+      } catch(e) { console.error('获取传感器数据失败:', e); }
+    }
+
+    // ========== 设备状态 ==========
+    async function fetchDevice() {
+      try {
+        const res = await fetch('/api/device');
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('lightSwitch').checked = json.data.light;
+          document.getElementById('feederSwitch').checked = json.data.feeder;
+        }
+      } catch(e) { console.error('获取设备状态失败:', e); }
+    }
+
+    // ========== 灯光控制 ==========
+    async function toggleLight(status) {
+      try {
+        await fetch('/api/light', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        document.getElementById('lightStatus').textContent = status ? '运行正常' : '已关闭';
+        document.getElementById('lightStatus').className = 'quick-status' + (status ? '' : ' off');
+      } catch(e) { console.error('灯光控制失败:', e); }
+    }
+
+    // ========== 喂食器 ==========
+    async function feedNow() {
+      try {
+        const res = await fetch('/api/feeder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const json = await res.json();
+        if (json.success) {
+          document.getElementById('feederStatus').textContent = '投食中...';
+          document.getElementById('feederStatus').style.color = '#ff9800';
+          setTimeout(() => {
+            document.getElementById('feederStatus').textContent = '运行正常';
+            document.getElementById('feederStatus').style.color = '#999';
+          }, 5000);
+        }
+      } catch(e) { console.error('喂食失败:', e); }
+    }
+
+    // ========== 历史数据 & 趋势图 ==========
+    async function fetchHistory() {
+      try {
+        const res = await fetch('/api/history');
+        const json = await res.json();
+        if (json.success) {
+          renderChart(json.data);
+        }
+      } catch(e) { console.error('获取历史数据失败:', e); }
+    }
+
+    function renderChart(data) {
+      const canvas = document.getElementById('trendChart');
+      const labels = data.map(d => {
+        const t = new Date(d.time);
+        return t.getHours().toString().padStart(2, '0') + ':00';
+      });
+      const temps = data.map(d => d.waterTemp);
+      const levels = data.map(d => d.waterLevel);
+
+      if (trendChart) trendChart.destroy();
+
+      trendChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '温度 (°C)', data: temps, borderColor: '#4a90d9', backgroundColor: 'rgba(74,144,217,0.12)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5, yAxisID: 'y' },
+            { label: '水位 (%)', data: levels, borderColor: '#8e7cc3', backgroundColor: 'rgba(142,124,195,0.08)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5, yAxisID: 'y1' }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#bbb', font: { size: 11 }, maxTicksLimit: 8 }, grid: { display: false } },
+            y: { position: 'left', min: 18, max: 32, ticks: { color: '#4a90d9', font: { size: 11 }, stepSize: 3.5 }, grid: { color: '#f0f0f0' } },
+            y1: { position: 'right', min: 0, max: 100, ticks: { color: '#8e7cc3', font: { size: 11 }, stepSize: 25 }, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    // ========== 系统日志 ==========
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/logs');
+        const json = await res.json();
+        if (json.success) renderLogs(json.data);
+      } catch(e) { console.error('获取日志失败:', e); }
+    }
+
+    function renderLogs(logs) {
+      const container = document.getElementById('logList');
+      container.innerHTML = logs.slice(0,3).map((log, i) => `
+        <div class="log-item">
+          <div class="log-icon ${log.type}">${log.type === 'warn' ? '⚠️' : log.type === 'error' ? '🔻' : '🐟'}</div>
+          <div><div class="log-text">${log.text}</div><div class="log-time">${log.time}</div></div>
+        </div>
+      `).join('');
+      const newCount = logs.filter(l => l.time === '刚刚').length;
+      document.getElementById('logNew').textContent = newCount > 0 ? `${newCount}条新` : '';
+      document.getElementById('logNew').style.display = newCount > 0 ? 'inline' : 'none';
+    }
+
+    // ========== 待办维护 ==========
+    async function fetchMaintenance() {
+      try {
+        const res = await fetch('/api/maintenance');
+        const json = await res.json();
+        if (json.success) renderMaint(json.data);
+      } catch(e) { console.error('获取维护事项失败:', e); }
+    }
+
+    function renderMaint(items) {
+      const container = document.getElementById('maintList');
+      container.innerHTML = items.map(item => `
+        <div class="maint-item" data-id="${item.id}">
+          <div class="maint-icon ${item.iconClass || ''}" ${item.iconClass === 'water' ? '' : `style="background:${getIconBg(item.iconClass)}"`}>${item.icon}</div>
+          <div><div class="maint-task">${item.task}</div><div class="maint-due">${item.due}</div></div>
+          <span class="maint-edit" onclick="editItem(${item.id})">编辑</span>
+          <span class="maint-del" onclick="delItem(${item.id})">✕</span>
+        </div>
+      `).join('');
+    }
+
+    function getIconBg(cls) {
+      const map = { water: '#e3f2fd', clean: '#fff3e0', repair: '#f3e5f5', feed: '#e8f5e9', other: '#e0f7fa' };
+      return map[cls] || '#f5f5f5';
+    }
+
+    let editingId = null;
+    function openModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = '添加维护事项';
+      document.getElementById('taskInput').value = '';
+      document.getElementById('dueInput').value = '';
+      document.getElementById('modal').classList.add('show');
+    }
+    function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+    async function saveItem() {
+      const task = document.getElementById('taskInput').value.trim();
+      const due = document.getElementById('dueInput').value.trim();
+      if (!task) return;
+
+      const icons = ['💧','🧹','🔧','🐟','🫧','⚗️'];
+      const classes = ['water','clean','repair','feed','other','other'];
+      const idx = Math.floor(Math.random() * icons.length);
+
+      if (editingId) {
+        await fetch(`/api/maintenance/${editingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task, due: due || '未设置' })
+        });
+      } else {
+        await fetch('/api/maintenance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task, due: due || '未设置', icon: icons[idx], iconClass: classes[idx] })
+        });
+      }
+      await fetchMaintenance();
+      await fetchLogs();
+      closeModal();
+    }
+
+    async function editItem(id) {
+      editingId = id;
+      const item = document.querySelector(`.maint-item[data-id="${id}"]`);
+      document.getElementById('modalTitle').textContent = '编辑维护事项';
+      document.getElementById('taskInput').value = item.querySelector('.maint-task').textContent;
+      document.getElementById('dueInput').value = item.querySelector('.maint-due').textContent;
+      document.getElementById('modal').classList.add('show');
+    }
+
+    async function delItem(id) {
+      await fetch(`/api/maintenance/${id}`, { method: 'DELETE' });
+      await fetchMaintenance();
+      await fetchLogs();
+    }
+
+    // ========== 初始化 ==========
+    async function init() {
+      await Promise.all([fetchSensor(), fetchDevice(), fetchHistory(), fetchLogs(), fetchMaintenance()]);
+      // 每5秒刷新传感器
+      setInterval(fetchSensor, 5000);
+      // 每10秒刷新设备状态
+      setInterval(fetchDevice, 10000);
+      // 每30秒刷新日志
+      setInterval(fetchLogs, 30000);
+    }
+    init();
+  </script>
+</body>
+</html>

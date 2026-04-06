@@ -42,7 +42,6 @@ app.get('/api/sensor', (req, res) => {
 // ESP32 上报数据
 app.post('/api/esp32/report', (req, res) => {
   const { waterLevel, waterTemp, turbidity } = req.body;
-
   if (waterLevel !== undefined) sensorData.waterLevel = waterLevel;
   if (waterTemp !== undefined) sensorData.waterTemp = waterTemp;
   if (turbidity !== undefined) sensorData.turbidity = turbidity;
@@ -157,7 +156,7 @@ app.put('/api/maintenance/:id', (req, res) => {
   if (!item) return res.status(404).json({ success: false, message: '事项不存在' });
   if (req.body.task !== undefined) item.task = req.body.task;
   if (req.body.due !== undefined) item.due = req.body.due;
-  if (req.body.icon !== undefined) item.icon = req.icon;
+  if (req.body.icon !== undefined) item.icon = req.body.icon;
   if (req.body.iconClass !== undefined) item.iconClass = req.body.iconClass;
   res.json({ success: true, data: item });
 });

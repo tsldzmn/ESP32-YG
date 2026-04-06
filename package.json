@@ -1,0 +1,14 @@
+{
+  "name": "fish-tank-monitor",
+  "version": "1.0.0",
+  "description": "ESP32 智能生态鱼缸远程监控面板",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

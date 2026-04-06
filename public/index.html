@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -23,9 +23,19 @@
     .welcome { font-size: 22px; font-weight: 600; color: #222; margin-bottom: 6px; }
     .welcome-sub { font-size: 13px; color: #999; margin-bottom: 24px; }
 
+    /* 设备在线状态指示器 */
+    .device-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 20px; }
+    .device-status.online { color: #4caf50; background: #e8f5e9; }
+    .device-status.offline { color: #ff9800; background: #fff3e0; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.online { background: #4caf50; animation: pulse 2s infinite; }
+    .status-dot.offline { background: #ff9800; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
     /* ===== 环境概览 3卡片 ===== */
     .env-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
     .env-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); position: relative; }
+    .env-card.offline { opacity: 0.5; }
     .env-badge { position: absolute; top: 14px; right: 14px; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
     .env-badge.up { color: #4caf50; background: #e8f5e9; }
     .env-badge.normal { color: #4caf50; background: #e8f5e9; }
@@ -165,8 +175,12 @@
 </head>
 <body>
   <div class="header">
-    <div class="header-logo">ESP32智能鱼缸 智能鱼缸系统</div>
+    <div class="header-logo">ESP32智能鱼缸系统</div>
     <div class="header-right">
+      <div class="device-status offline" id="deviceStatus">
+        <div class="status-dot offline"></div>
+        <span>设备离线</span>
+      </div>
       <div class="header-time"><div>14:29:39</div><div class="date">周三, 4月1日</div></div>
       <div class="header-icons">
         <div class="notif-badge"><svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div>
@@ -177,7 +191,7 @@
 
   <div class="page">
     <div class="welcome">欢迎回来，养鱼达人！👋</div>
-    <div class="welcome-sub">最后同步：4月1日 14:29:39 · 所有系统运行正常</div>
+    <div class="welcome-sub" id="welcomeSub">最后同步：4月1日 14:29:39 · 所有系统运行正常</div>
 
     <!-- 环境概览 -->
     <div class="section-title">环境概览</div>
@@ -223,7 +237,7 @@
       <!-- 左：趋势图 + 水质参数条 -->
       <div>
         <div class="trends-card">
-          <div class="card-title">环境趋势（过去24小时）</div>
+          <div class="card-title">环境趋势（过去1小时）</div>
           <div class="legend">
             <div class="legend-item"><div class="legend-dot" style="background:#4a90d9"></div> 温度 (°C)</div>
             <div class="legend-item"><div class="legend-dot" style="background:#8e7cc3"></div> 水位 (%)</div>
@@ -280,6 +294,15 @@
         const json = await res.json();
         if (json.success) {
           const d = json.data;
+          const isOnline = d.isOnline;
+
+          // 更新设备在线状态
+          updateDeviceStatus(isOnline);
+
+          // 离线时卡片变灰
+          const envCards = document.querySelectorAll('.env-card');
+          envCards.forEach(card => card.classList.toggle('offline', !isOnline));
+
           // 环境概览
           const tempCard = document.getElementById('envTemp');
           tempCard.querySelector('.env-value').innerHTML = `${d.waterTemp.toFixed(1)} <span class="env-unit">°C</span>`;
@@ -305,9 +328,23 @@
           const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
           document.querySelector('.header-time div:first-child').textContent = timeStr;
           document.querySelector('.header-time .date').textContent = dateStr;
-          document.querySelector('.welcome-sub').textContent = `最后同步：${dateStr} ${timeStr} · ${d.waterLevel < 30 ? '⚠️ 水位过低！' : '所有系统运行正常'}`;
+
+          const statusText = isOnline ? '所有系统运行正常' : '⚠️ 设备已离线，显示最后已知数据';
+          document.getElementById('welcomeSub').textContent = `最后同步：${dateStr} ${timeStr} · ${statusText}`;
         }
       } catch(e) { console.error('获取传感器数据失败:', e); }
+    }
+
+    // ========== 设备在线状态 ==========
+    function updateDeviceStatus(isOnline) {
+      const el = document.getElementById('deviceStatus');
+      if (isOnline) {
+        el.className = 'device-status online';
+        el.innerHTML = '<div class="status-dot online"></div><span>设备在线</span>';
+      } else {
+        el.className = 'device-status offline';
+        el.innerHTML = '<div class="status-dot offline"></div><span>设备离线</span>';
+      }
     }
 
     // ========== 设备状态 ==========
@@ -368,12 +405,16 @@
 
     function renderChart(data) {
       const canvas = document.getElementById('trendChart');
-      const labels = data.map(d => {
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const recentData = data.filter(d => new Date(d.time) >= oneHourAgo);
+
+      const labels = recentData.map(d => {
         const t = new Date(d.time);
-        return t.getHours().toString().padStart(2, '0') + ':00';
+        return t.getHours().toString().padStart(2, '0') + ':' + t.getMinutes().toString().padStart(2, '0');
       });
-      const temps = data.map(d => d.waterTemp);
-      const levels = data.map(d => d.waterLevel);
+      const temps = recentData.map(d => d.waterTemp);
+      const levels = recentData.map(d => d.waterLevel);
 
       if (trendChart) trendChart.destroy();
 
@@ -391,7 +432,7 @@
           interaction: { mode: 'index', intersect: false },
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#bbb', font: { size: 11 }, maxTicksLimit: 8 }, grid: { display: false } },
+            x: { ticks: { color: '#bbb', font: { size: 11 }, maxTicksLimit: 6 }, grid: { display: false } },
             y: { position: 'left', min: 18, max: 32, ticks: { color: '#4a90d9', font: { size: 11 }, stepSize: 3.5 }, grid: { color: '#f0f0f0' } },
             y1: { position: 'right', min: 0, max: 100, ticks: { color: '#8e7cc3', font: { size: 11 }, stepSize: 25 }, grid: { display: false } }
           }

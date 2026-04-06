@@ -15,6 +15,10 @@ let sensorData = {
   lastUpdate: new Date().toISOString()
 };
 
+/** 设备在线状态：超过30秒未上报视为离线 */
+const OFFLINE_THRESHOLD = 30000;
+let deviceOnline = false;
+
 let deviceStatus = {
   light: false,
   feeder: false
@@ -33,10 +37,19 @@ let historyData = [];
 
 // ========== 传感器数据 API ==========
 
-// 获取传感器数据
+// 获取传感器数据（包含设备在线状态）
 app.get('/api/sensor', (req, res) => {
-  sensorData.lastUpdate = new Date().toISOString();
-  res.json({ success: true, data: sensorData });
+  const now = Date.now();
+  const lastReportTime = new Date(sensorData.lastUpdate).getTime();
+  deviceOnline = (now - lastReportTime) < OFFLINE_THRESHOLD;
+
+  res.json({
+    success: true,
+    data: {
+      ...sensorData,
+      isOnline: deviceOnline
+    }
+  });
 });
 
 // ESP32 上报数据
@@ -46,6 +59,7 @@ app.post('/api/esp32/report', (req, res) => {
   if (waterTemp !== undefined) sensorData.waterTemp = waterTemp;
   if (turbidity !== undefined) sensorData.turbidity = turbidity;
   sensorData.lastUpdate = new Date().toISOString();
+  deviceOnline = true;
 
   // 自动记录日志
   if (waterTemp !== undefined && waterTemp > 28) {
@@ -64,7 +78,9 @@ app.post('/api/esp32/report', (req, res) => {
     waterTemp: sensorData.waterTemp,
     turbidity: sensorData.turbidity
   });
-  if (historyData.length > 48) historyData = historyData.slice(-48);
+  // 只保留过去1小时的数据
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  historyData = historyData.filter(d => new Date(d.time) >= oneHourAgo);
 
   res.json({ success: true, message: '数据已接收' });
 });
@@ -179,6 +195,14 @@ app.get('/api/esp32/command', (req, res) => {
       feeder: deviceStatus.feeder
     }
   });
+});
+
+// ========== 设备在线状态 API ==========
+app.get('/api/device/status', (req, res) => {
+  const now = Date.now();
+  const lastReportTime = new Date(sensorData.lastUpdate).getTime();
+  deviceOnline = (now - lastReportTime) < OFFLINE_THRESHOLD;
+  res.json({ success: true, data: { isOnline: deviceOnline } });
 });
 
 const PORT = process.env.PORT || 3000;

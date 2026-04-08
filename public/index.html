@@ -225,9 +225,9 @@
           <div class="quick-status" id="lightStatus">运行正常</div>
         </div>
         <div class="quick-side-card">
-          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div><label class="toggle"><input type="checkbox" id="feederSwitch" onchange="feedNow()"><span class="toggle-track"></span></label></div>
+          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div><label class="toggle"><input type="checkbox" id="feederSwitch" onclick="return false;"><span class="toggle-track"></span></label></div>
           <div class="quick-name">自动喂食器</div>
-          <div class="quick-status" id="feederStatus">运行正常</div>
+          <div class="quick-status" id="feederStatus" onclick="feedNow()">点击喂食</div>
         </div>
       </div>
     </div>
@@ -360,7 +360,10 @@
     }
 
     // ========== 灯光控制 ==========
+    let lightUpdating = false;
     async function toggleLight(status) {
+      if (lightUpdating) return;
+      lightUpdating = true;
       try {
         await fetch('https://esp32-yg.onrender.com/api/light', {
           method: 'POST',
@@ -369,11 +372,22 @@
         });
         document.getElementById('lightStatus').textContent = status ? '运行正常' : '已关闭';
         document.getElementById('lightStatus').className = 'quick-status' + (status ? '' : ' off');
-      } catch(e) { console.error('灯光控制失败:', e); }
+      } catch(e) { 
+        console.error('灯光控制失败:', e);
+        document.getElementById('lightSwitch').checked = !status;
+      } finally {
+        lightUpdating = false;
+      }
     }
 
     // ========== 喂食器 ==========
+    let isFeeding = false;
     async function feedNow() {
+      if (isFeeding) return;
+      isFeeding = true;
+      const feederSwitch = document.getElementById('feederSwitch');
+      feederSwitch.checked = true;
+      feederSwitch.disabled = true;
       try {
         const res = await fetch('https://esp32-yg.onrender.com/api/feeder', {
           method: 'POST',
@@ -385,11 +399,19 @@
           document.getElementById('feederStatus').textContent = '投食中...';
           document.getElementById('feederStatus').style.color = '#ff9800';
           setTimeout(() => {
+            isFeeding = false;
+            feederSwitch.checked = false;
+            feederSwitch.disabled = false;
             document.getElementById('feederStatus').textContent = '运行正常';
             document.getElementById('feederStatus').style.color = '#999';
           }, 5000);
         }
-      } catch(e) { console.error('喂食失败:', e); }
+      } catch(e) { 
+        console.error('喂食失败:', e);
+        isFeeding = false;
+        feederSwitch.checked = false;
+        feederSwitch.disabled = false;
+      }
     }
 
     // ========== 历史数据 & 趋势图 ==========

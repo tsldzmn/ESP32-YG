@@ -162,7 +162,10 @@ void checkCommands() {
         Serial.println("网页触发喂食！");
         feedFish();
       }
-      feederActive = newFeeder;
+      // 只有当后端返回false时才重置feederActive，避免后端状态长时间为true导致的问题
+      if (!newFeeder) {
+        feederActive = false;
+      }
 
       // 网页灯光控制：开启则强制亮灯，关闭则恢复光敏自动控制
       if (newLight) {
@@ -192,9 +195,12 @@ void checkCommands() {
  * @note 使用标准20ms周期：0.5ms=0度，1.5ms=90度，2.5ms=180度
  * @note 喂食过程中锁定状态，完成后等待一定时间再允许下次喂食
  */
+unsigned long lastFeedTime = 0;  // 上次喂食时间
+
 void feedFish() {
   Serial.println("开始喂食...");
   feederActive = true;
+  lastFeedTime = millis();
   // 正向旋转至 180 度 (0.5ms -> 2.5ms)
   for (int i = 0; i <= 180; i += 5) {
     int pulse = map(i, 0, 180, 500, 2500);  // 修正：2.5ms = 180度
@@ -214,10 +220,8 @@ void feedFish() {
   }
   servoPos = 0;
   Serial.println("喂食完成！");
-  // 喂食完成后等待一段时间，确保后端状态已重置，再允许下次喂食
-  delay(3000);
+  // 喂食完成后不再锁定，由用户15秒冷却期控制
   feederActive = false;
-  Serial.println("喂食锁定解除，允许下次喂食");
 }
 
 // ============================================================================

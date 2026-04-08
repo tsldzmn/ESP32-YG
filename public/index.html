@@ -72,6 +72,9 @@
     .quick-icon.feeder { background: #fff3e0; }
     .quick-name { font-size: 13px; font-weight: 600; color: #333; }
     .quick-status { font-size: 11px; color: #999; margin-top: 2px; }
+    .feeder-btn { background: #4a90d9; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+    .feeder-btn:hover { background: #357abd; }
+    .feeder-btn:disabled { background: #ccc; cursor: not-allowed; }
     .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle-track { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ddd; border-radius: 24px; transition: 0.3s; }
@@ -225,9 +228,9 @@
           <div class="quick-status" id="lightStatus">运行正常</div>
         </div>
         <div class="quick-side-card">
-          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div><label class="toggle"><input type="checkbox" id="feederSwitch" onclick="return false;"><span class="toggle-track"></span></label></div>
+          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div><button id="feederBtn" class="feeder-btn" onclick="feedNow()">喂食</button></div>
           <div class="quick-name">自动喂食器</div>
-          <div class="quick-status" id="feederStatus" onclick="feedNow()">点击喂食</div>
+          <div class="quick-status" id="feederStatus">等待操作</div>
         </div>
       </div>
     </div>
@@ -354,7 +357,6 @@
         const json = await res.json();
         if (json.success) {
           document.getElementById('lightSwitch').checked = json.data.light;
-          document.getElementById('feederSwitch').checked = json.data.feeder;
         }
       } catch(e) { console.error('获取设备状态失败:', e); }
     }
@@ -385,9 +387,12 @@
     async function feedNow() {
       if (isFeeding) return;
       isFeeding = true;
-      const feederSwitch = document.getElementById('feederSwitch');
-      feederSwitch.checked = true;
-      feederSwitch.disabled = true;
+      const feederBtn = document.getElementById('feederBtn');
+      const feederStatus = document.getElementById('feederStatus');
+      feederBtn.disabled = true;
+      feederBtn.textContent = '喂食中...';
+      feederStatus.textContent = '投食中...';
+      feederStatus.style.color = '#ff9800';
       try {
         const res = await fetch('https://esp32-yg.onrender.com/api/feeder', {
           method: 'POST',
@@ -396,21 +401,25 @@
         });
         const json = await res.json();
         if (json.success) {
-          document.getElementById('feederStatus').textContent = '投食中...';
-          document.getElementById('feederStatus').style.color = '#ff9800';
           setTimeout(() => {
             isFeeding = false;
-            feederSwitch.checked = false;
-            feederSwitch.disabled = false;
-            document.getElementById('feederStatus').textContent = '运行正常';
-            document.getElementById('feederStatus').style.color = '#999';
+            feederBtn.disabled = false;
+            feederBtn.textContent = '喂食';
+            feederStatus.textContent = '操作完成';
+            feederStatus.style.color = '#4caf50';
+            setTimeout(() => {
+              feederStatus.textContent = '等待操作';
+              feederStatus.style.color = '#999';
+            }, 2000);
           }, 5000);
         }
       } catch(e) { 
         console.error('喂食失败:', e);
         isFeeding = false;
-        feederSwitch.checked = false;
-        feederSwitch.disabled = false;
+        feederBtn.disabled = false;
+        feederBtn.textContent = '喂食';
+        feederStatus.textContent = '操作失败';
+        feederStatus.style.color = '#e74c3c';
       }
     }
 

@@ -192,6 +192,7 @@ void checkCommands() {
  */
 void feedFish() {
   Serial.println("开始喂食...");
+  feederActive = true;
   // 正向旋转至 180 度
   for (int i = 0; i <= 180; i += 5) {
     int pulse = map(i, 0, 180, 500, 2400);
@@ -210,6 +211,7 @@ void feedFish() {
     delay(20);
   }
   servoPos = 0;
+  feederActive = false;  // 喂食完成后立即重置标志，允许下次喂食
   Serial.println("喂食完成！");
 }
 

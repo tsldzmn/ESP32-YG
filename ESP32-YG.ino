@@ -189,27 +189,28 @@ void checkCommands() {
 /**
  * @brief 控制舵机旋转完成喂食动作 (0度 -> 180度 -> 0度)
  * @note 以 5 度为步进平滑转动
+ * @note 使用标准20ms周期：0.5ms=0度，1.5ms=90度，2.5ms=180度
  * @note 喂食过程中锁定状态，完成后等待一定时间再允许下次喂食
  */
 void feedFish() {
   Serial.println("开始喂食...");
   feederActive = true;
-  // 正向旋转至 180 度
+  // 正向旋转至 180 度 (0.5ms -> 2.5ms)
   for (int i = 0; i <= 180; i += 5) {
-    int pulse = map(i, 0, 180, 500, 2400);
+    int pulse = map(i, 0, 180, 500, 2500);  // 修正：2.5ms = 180度
     digitalWrite(SERVO_PIN, HIGH);
     delayMicroseconds(pulse);
     digitalWrite(SERVO_PIN, LOW);
-    delay(20);
+    delay(18);  // 20ms周期 - 2ms高电平 = 18ms低电平
   }
   delay(500);
   // 反向旋转回 0 度
   for (int i = 180; i >= 0; i -= 5) {
-    int pulse = map(i, 0, 180, 500, 2400);
+    int pulse = map(i, 0, 180, 500, 2500);
     digitalWrite(SERVO_PIN, HIGH);
     delayMicroseconds(pulse);
     digitalWrite(SERVO_PIN, LOW);
-    delay(20);
+    delay(18);
   }
   servoPos = 0;
   Serial.println("喂食完成！");
@@ -298,12 +299,12 @@ void loop() {
     if (c == '1') servoPos = 180;
   }
 
-  // 非喂食状态下保持舵机当前位置
+  // 非喂食状态下保持舵机当前位置 (20ms周期)
   if (!feederActive) {
     digitalWrite(SERVO_PIN, HIGH);
-    delayMicroseconds(servoPos == 0 ? 500 : 2400);
+    delayMicroseconds(servoPos == 0 ? 500 : 2500);  // 修正：2.5ms = 180度
     digitalWrite(SERVO_PIN, LOW);
-    delay(20);
+    delay(18);  // 20ms周期
   }
 
   // --- 服务器通信 ---

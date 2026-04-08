@@ -290,7 +290,7 @@
     // ========== 传感器数据 ==========
     async function fetchSensor() {
       try {
-        const res = await fetch('/api/sensor');
+        const res = await fetch('https://esp32-yg.onrender.com/api/sensor');
         const json = await res.json();
         if (json.success) {
           const d = json.data;
@@ -350,7 +350,7 @@
     // ========== 设备状态 ==========
     async function fetchDevice() {
       try {
-        const res = await fetch('/api/device');
+        const res = await fetch('https://esp32-yg.onrender.com/api/device');
         const json = await res.json();
         if (json.success) {
           document.getElementById('lightSwitch').checked = json.data.light;
@@ -362,7 +362,7 @@
     // ========== 灯光控制 ==========
     async function toggleLight(status) {
       try {
-        await fetch('/api/light', {
+        await fetch('https://esp32-yg.onrender.com/api/light', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
@@ -375,7 +375,7 @@
     // ========== 喂食器 ==========
     async function feedNow() {
       try {
-        const res = await fetch('/api/feeder', {
+        const res = await fetch('https://esp32-yg.onrender.com/api/feeder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
@@ -395,7 +395,7 @@
     // ========== 历史数据 & 趋势图 ==========
     async function fetchHistory() {
       try {
-        const res = await fetch('/api/history');
+        const res = await fetch('https://esp32-yg.onrender.com/api/history');
         const json = await res.json();
         if (json.success) {
           renderChart(json.data);
@@ -443,7 +443,7 @@
     // ========== 系统日志 ==========
     async function fetchLogs() {
       try {
-        const res = await fetch('/api/logs');
+        const res = await fetch('https://esp32-yg.onrender.com/api/logs');
         const json = await res.json();
         if (json.success) renderLogs(json.data);
       } catch(e) { console.error('获取日志失败:', e); }
@@ -465,7 +465,7 @@
     // ========== 待办维护 ==========
     async function fetchMaintenance() {
       try {
-        const res = await fetch('/api/maintenance');
+        const res = await fetch('https://esp32-yg.onrender.com/api/maintenance');
         const json = await res.json();
         if (json.success) renderMaint(json.data);
       } catch(e) { console.error('获取维护事项失败:', e); }
@@ -514,7 +514,7 @@
           body: JSON.stringify({ task, due: due || '未设置' })
         });
       } else {
-        await fetch('/api/maintenance', {
+        await fetch('https://esp32-yg.onrender.com/api/maintenance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ task, due: due || '未设置', icon: icons[idx], iconClass: classes[idx] })

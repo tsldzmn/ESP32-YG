@@ -329,7 +329,7 @@
           document.querySelector('.header-time div:first-child').textContent = timeStr;
           document.querySelector('.header-time .date').textContent = dateStr;
 
-          const statusText = isOnline ? '所有系统运行正常' : '⚠️ 设备已离线，显示最后已知数据';
+          const statusText = isOnline ? '所有系统运行正常' : '⚠️设备离线';
           document.getElementById('welcomeSub').textContent = `最后同步：${dateStr} ${timeStr} · ${statusText}`;
         }
       } catch(e) { console.error('获取传感器数据失败:', e); }

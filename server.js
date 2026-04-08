@@ -110,11 +110,11 @@ app.post('/api/light', (req, res) => {
 app.post('/api/feeder', (req, res) => {
   deviceStatus.feeder = true;
   addLog('info', '自动喂食器开始投食');
-  // 舵机喂食动作约需3秒 + 等待锁定解除3秒 = 6秒后ESP32才会允许下一次喂食
+  // 喂食完成后15秒内不允许再次触发（与前端同步）
   setTimeout(() => {
     deviceStatus.feeder = false;
     addLog('info', '自动喂食器投食完成');
-  }, 3500);  // 3.5秒后重置，让ESP32有机会在锁定期间检测到false
+  }, 15000);  // 15秒后重置
   res.json({ success: true, data: deviceStatus });
 });
 

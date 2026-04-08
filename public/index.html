@@ -72,9 +72,12 @@
     .quick-icon.feeder { background: #fff3e0; }
     .quick-name { font-size: 13px; font-weight: 600; color: #333; }
     .quick-status { font-size: 11px; color: #999; margin-top: 2px; }
-    .feeder-btn { background: #4a90d9; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; }
+    .feeder-btn { background: #4a90d9; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; width: 100%; }
     .feeder-btn:hover { background: #357abd; }
     .feeder-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .feeder-wrapper { display: flex; flex-direction: column; gap: 6px; }
+    .feeder-progress { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; }
+    .feeder-progress-bar { height: 100%; background: linear-gradient(90deg, #4a90d9, #357abd); width: 0%; transition: width 0.1s linear; }
     .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
     .toggle-track { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #ddd; border-radius: 24px; transition: 0.3s; }
@@ -228,8 +231,12 @@
           <div class="quick-status" id="lightStatus">运行正常</div>
         </div>
         <div class="quick-side-card">
-          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div><button id="feederBtn" class="feeder-btn" onclick="feedNow()">喂食</button></div>
+          <div class="quick-side-top"><div class="quick-icon feeder">🐟</div></div>
           <div class="quick-name">自动喂食器</div>
+          <div class="feeder-wrapper">
+            <button id="feederBtn" class="feeder-btn" onclick="feedNow()">喂食</button>
+            <div class="feeder-progress"><div id="feederProgress" class="feeder-progress-bar"></div></div>
+          </div>
           <div class="quick-status" id="feederStatus">等待操作</div>
         </div>
       </div>
@@ -384,15 +391,31 @@
 
     // ========== 喂食器 ==========
     let isFeeding = false;
+    let feedTimeout = null;
+    let progressInterval = null;
+    const FEED_DURATION = 15000; // 15秒喂食间隔
+
     async function feedNow() {
       if (isFeeding) return;
       isFeeding = true;
       const feederBtn = document.getElementById('feederBtn');
       const feederStatus = document.getElementById('feederStatus');
+      const progressBar = document.getElementById('feederProgress');
+      
       feederBtn.disabled = true;
       feederBtn.textContent = '喂食中...';
       feederStatus.textContent = '投食中...';
       feederStatus.style.color = '#ff9800';
+      
+      // 进度条动画
+      let progress = 0;
+      progressBar.style.width = '0%';
+      progressInterval = setInterval(() => {
+        progress += 100 / (FEED_DURATION / 100);
+        if (progress >= 100) progress = 100;
+        progressBar.style.width = progress + '%';
+      }, 100);
+      
       try {
         const res = await fetch('https://esp32-yg.onrender.com/api/feeder', {
           method: 'POST',
@@ -401,18 +424,16 @@
         });
         const json = await res.json();
         if (json.success) {
-          // 等待ESP32完成喂食动作(约3秒) + 锁定解除(3秒) = 6秒
-          setTimeout(() => {
+          // 15秒后允许再次点击
+          feedTimeout = setTimeout(() => {
             isFeeding = false;
             feederBtn.disabled = false;
             feederBtn.textContent = '喂食';
-            feederStatus.textContent = '操作完成';
-            feederStatus.style.color = '#4caf50';
-            setTimeout(() => {
-              feederStatus.textContent = '等待操作';
-              feederStatus.style.color = '#999';
-            }, 2000);
-          }, 7000);  // 7秒后允许再次点击
+            feederStatus.textContent = '等待操作';
+            feederStatus.style.color = '#999';
+            clearInterval(progressInterval);
+            progressBar.style.width = '0%';
+          }, FEED_DURATION);
         }
       } catch(e) { 
         console.error('喂食失败:', e);
@@ -421,6 +442,8 @@
         feederBtn.textContent = '喂食';
         feederStatus.textContent = '操作失败';
         feederStatus.style.color = '#e74c3c';
+        clearInterval(progressInterval);
+        progressBar.style.width = '0%';
       }
     }
 

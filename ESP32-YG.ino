@@ -189,6 +189,7 @@ void checkCommands() {
 /**
  * @brief 控制舵机旋转完成喂食动作 (0度 -> 180度 -> 0度)
  * @note 以 5 度为步进平滑转动
+ * @note 喂食过程中锁定状态，完成后等待一定时间再允许下次喂食
  */
 void feedFish() {
   Serial.println("开始喂食...");
@@ -211,8 +212,11 @@ void feedFish() {
     delay(20);
   }
   servoPos = 0;
-  feederActive = false;  // 喂食完成后立即重置标志，允许下次喂食
   Serial.println("喂食完成！");
+  // 喂食完成后等待一段时间，确保后端状态已重置，再允许下次喂食
+  delay(3000);
+  feederActive = false;
+  Serial.println("喂食锁定解除，允许下次喂食");
 }
 
 // ============================================================================
